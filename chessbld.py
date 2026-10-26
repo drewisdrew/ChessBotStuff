@@ -18,6 +18,7 @@ except FileNotFoundError:
 
 moves = 0
 blind = False
+engine.configure({"Skill Level": 1})
 
 def move():
     global moves, blind
@@ -60,14 +61,17 @@ if white:
 while not board.is_game_over():
     os.system("clear")
     print("CHESSBLD")
-    print("You are playinng as white") if white else print("You are playing as black.")
+    print("You are playinng as white.") if white else print("You are playing as black.")
 
-    result = engine.play(board, chess.engine.Limit(time=0.0001, depth=0))
+    result = engine.play(board, chess.engine.Limit(time=0.0001, depth=1, nodes=20))
     print("Engine plays:", board.san(result.move))
     board.push(result.move)
 
     move()
 
+
+os.system("clear")
+print("CHESSBLD")
 print(board)
 print("END:", board.outcome().termination)
 print("WINNER:", board.outcome().winner)
