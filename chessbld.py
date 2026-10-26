@@ -4,41 +4,28 @@ import chess.engine
 import random
 import os
 
-print("CHESSBLD")
 board = chess.Board()
-engine = chess.engine.SimpleEngine.popen_uci("C:\\Users\\andre\\Downloads\\stockfish-windows-arm64-universal\\stockfish\\stockfish-windows-arm64-universal.exe")
+try:
+    if "nt" in os.name:
+        engine = chess.engine.SimpleEngine.popen_uci("C:\\Users\\andre\\Downloads\\stockfish-windows-arm64-universal\\stockfish\\stockfish-windows-arm64-universal.exe")
+    elif "posix" in os.name:
+        engine = chess.engine.SimpleEngine.popen_uci("/home/drew/Downloads/stockfish/stockfish-linux-x86-64-universal")
+    else:
+        print("Unexpected OS.")
+except FileNotFoundError:
+    print("Make sure the engine in in the directory.")
+    print("You can change the directory on lines 11/13 depending on your OS.")
+
 moves = 0
+blind = False
 
-
-if random.randint(2, 2) == 1:
-    print("You start as white.")
+def move():
+    global moves, blind
     moves += 1
-    while True:
-        move = input("Move (SAN):")
-        try:
-            board.parse_san(move)   
-            board.push_san(move)
-            break
-        except ValueError:
-            if move == "peek":
-                print(board)
-                print("Here is the state of the board.")
-            else:
-                print("Invalid.")
-else:
-    print("You start as black.")
+    if not blind:
+        print(board)
 
-while not board.is_game_over():
-    os.system("cls")
-    
-    print("CHESSBLD")
-    result = engine.play(board, chess.engine.Limit(time=0.0001, depth=0))
-    print("Engine plays:", board.san(result.move))
-    board.push(result.move)
-
-    moves += 1
-    print(board)
-    while True:
+    while not board.is_game_over():
         move = input("Move (SAN): ")
         try:
             board.parse_san(move)
@@ -48,13 +35,39 @@ while not board.is_game_over():
             if move == "peek":
                 print(board)
                 print("Here is the state of the board.")
+            elif move == "blind":
+                blind = not blind
+                print("Blind:", blind)
             else:
                 print("Invalid.")
-    
 
-    
+        
+while True:
+    white = input("Play as white? Y/N: ")
+    if white.lower().strip() == "y":
+        white = True
+        break
+    elif white.lower().strip() == "n":
+        white = False
+        break
+    else:
+        print("Invalid.")
+
+
+while not board.is_game_over():
+    os.system("clear")
+    print("CHESSBLD")
+
+    result = engine.play(board, chess.engine.Limit(time=0.0001, depth=0))
+    print("Engine plays:", board.san(result.move))
+    board.push(result.move)
+
+    move()
+
+print(board)
 print("END:", board.outcome().termination)
 print("WINNER:", board.outcome().winner)
 print("MOVES:", moves)
+print("GAME OVER!")
 
 engine.quit()
