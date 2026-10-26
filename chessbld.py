@@ -53,10 +53,14 @@ while True:
     else:
         print("Invalid.")
 
+if white:
+    move()
+
 
 while not board.is_game_over():
     os.system("clear")
     print("CHESSBLD")
+    print("You are playinng as white") if white else print("You are playing as black.")
 
     result = engine.play(board, chess.engine.Limit(time=0.0001, depth=0))
     print("Engine plays:", board.san(result.move))
