@@ -4,6 +4,7 @@
 import chess
 import subprocess
 import random
+import os
 
 # per square tables
 #region psts
@@ -286,13 +287,16 @@ if white:
 
 
 while not board.is_game_over():
-    subprocess.run("clear")
+    if "nt" in os.name:
+        os.system("cls")
+    else:
+        subprocess.run("clear")
     print("\"No son, we have Stockfish at home.\"")
     print("You are playing as white.") if white else print("You are playing as black.")
 
 
     # Depth calculation (n-ply)
-    result = calculate(6)
+    result = calculate(5)
     print("Engine plays:", board.san(result))
     board.push(result)
 
