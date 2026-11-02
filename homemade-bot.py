@@ -107,7 +107,13 @@ def evaluate():
         value = piece_values.get(piece.piece_type)
         score += value if piece.color == chess.WHITE else -value
 
-    # TODO: PST incorporation
+    endgame = True
+    for sq2 in chess.SQUARES:
+        piece2 = board.piece_at(sq2)
+        if piece2 and piece2.piece_type == chess.QUEEN:
+            endgame = False
+            break
+
     for sq in chess.SQUARES:
         piece = board.piece_at(sq)
         if piece:
@@ -118,37 +124,32 @@ def evaluate():
                 else:
                     score -= pst_pawn[sq]
 
-            if piece.piece_type == chess.KNIGHT:
+            elif piece.piece_type == chess.KNIGHT:
                 if piece.color == chess.WHITE:
                     score += pst_knight[sq ^ 56]
                 else:
                     score -= pst_knight[sq]
 
-            if piece.piece_type == chess.BISHOP:
+            elif piece.piece_type == chess.BISHOP:
                 if piece.color == chess.WHITE:
                     score += pst_bishop[sq ^ 56]
                 else:
                     score -= pst_bishop[sq]
 
-            if piece.piece_type == chess.ROOK:
+            elif piece.piece_type == chess.ROOK:
                 if piece.color == chess.WHITE:
                     score += pst_rook[sq ^ 56]
                 else:
                     score -= pst_rook[sq]
 
-            if piece.piece_type == chess.QUEEN:
+            elif piece.piece_type == chess.QUEEN:
                 if piece.color == chess.WHITE:
                     score += pst_queen[sq ^ 56]
                 else:
                     score -= pst_queen[sq]
 
-            if piece.piece_type == chess.KING:
-                queens = 0
-                for sq2 in chess.SQUARES:
-                    piece2 = board.piece_at(sq2)
-                    if piece2 and piece2.piece_type == chess.QUEEN:
-                        queens += 1
-                if queens > 0:
+            else: # chess.KING
+                if not endgame:
                     if piece.color == chess.WHITE:
                         score += pst_king[sq ^ 56]
                     else:
@@ -157,11 +158,16 @@ def evaluate():
                     if piece.color == chess.WHITE:
                         score += pst_king_endgame[sq ^ 56]
                     else:
-                        score -= pst_king_endgame[sq]                  
+                        score -= pst_king_endgame[sq]
+
+    # Penalize being in check
+    if board.is_check():
+        if board.turn == chess.WHITE:
+            score -= 25
+        else:
+            score += 25                  
 
 
-
-    # return table[sq] if color == WHITE else table[sq ^ 56]
     return score
 
 
@@ -191,6 +197,76 @@ def move():
             else:
                 print("Invalid.")
 
+
+def move_order_key(move):
+    # search captures and promotions first
+    score = 0
+    if board.is_capture(move):
+        victim = board.piece_at(move.to_square)
+        victim_value = piece_values[victim.piece_type] if victim else 100 # account for en passant
+        attacker = board.piece_at(move.from_square)
+        attacker_value = piece_values[attacker.piece_type]
+        score += 10 * victim_value - attacker_value
+    if move.promotion:
+        score += piece_values[move.promotion]
+    return -score
+
+
+
+def minmax(alpha, beta, depth, maxxing):
+    if board.is_checkmate():
+        return 999999 if maxxing else -999999
+    elif board.is_game_over():
+        return 0
+    if depth == 0:
+        return evaluate()
+
+    moves = sorted(board.legal_moves, key=move_order_key)
+    if maxxing:
+        best = -float("inf")
+        for move in moves:
+            board.push(move)
+            best = max(best, minmax(alpha, beta, depth - 1, False))
+            board.pop()
+            alpha = max(alpha, best)
+            if alpha >= beta:
+                break
+        return best
+    else:
+        best = float("inf")
+        for move in moves:
+            board.push(move)
+            best = min(best, minmax(alpha, beta, depth - 1, True))
+            board.pop()
+            beta = min(beta, best)
+            if alpha >= beta:
+                break
+        return best
+
+def calculate(depth):
+    best_moves, best_score = [], None
+    for move in list(board.legal_moves):
+
+        if best_score is None:
+            alpha, beta = -float("inf"), float("inf")
+        elif engine_white:
+            alpha, beta = best_score - 1, float("inf")
+        else:
+            alpha, beta = -float("inf"), best_score + 1
+
+
+        board.push(move)
+        score = minmax(alpha, beta, depth - 1, not engine_white)
+        board.pop()
+
+        if best_score is None or (score > best_score if engine_white else score < best_score):
+            best_score, best_moves = score, [move]
+        elif score == best_score:
+            best_moves.append(move)
+    print(best_score)
+    return random.choice(best_moves)
+
+
         
 while True:
     white = input("Play as white? Y/N: ")
@@ -214,43 +290,9 @@ while not board.is_game_over():
     print("\"No son, we have Stockfish at home.\"")
     print("You are playing as white.") if white else print("You are playing as black.")
 
-    if True:
-        bestmoves = []
-        bestscore = None
-        # Depth calculation (2-ply)
-        for m1 in list(board.legal_moves):
-            board.push(m1)
 
-            if board.is_checkmate():
-                if engine_white: score = 999999
-                else: score = -999999
-            elif board.is_game_over():
-                score = 0
-            else:
-                replies = []
-                for m2 in list(board.legal_moves):
-                    board.push(m2)
-                    replies.append(evaluate()) # negative score is better for black
-                    board.pop()
-                score = min(replies) if engine_white else max(replies)
-                print(replies)
-            board.pop()
-            better = (bestscore is None or (score > bestscore if engine_white else score < bestscore))
-
-            if better:
-                bestscore = score
-                bestmoves = [m1]
-            elif score == bestscore:
-                bestmoves.append(m1)
-
-      
-        result = random.choice(bestmoves)
-        print(bestmoves)
-        print(result)
-        # print(replies)
-        print("\n")
-        print(list(board.legal_moves))
-
+    # Depth calculation (n-ply)
+    result = calculate(6)
     print("Engine plays:", board.san(result))
     board.push(result)
 

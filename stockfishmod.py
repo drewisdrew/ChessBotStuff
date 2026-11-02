@@ -1,4 +1,5 @@
-# chessbld.py
+# stockfishmod.py
+# Modifications to Stockfish to make the game fun for humans
 import chess
 import chess.engine
 import random
@@ -7,6 +8,7 @@ import os
 board = chess.Board()
 try:
     if "nt" in os.name:
+        nt = True
         engine = chess.engine.SimpleEngine.popen_uci("C:\\Users\\andre\\Downloads\\stockfish-windows-arm64-universal\\stockfish\\stockfish-windows-arm64-universal.exe")
     elif "posix" in os.name:
         engine = chess.engine.SimpleEngine.popen_uci("/home/drew/Downloads/stockfish/stockfish-linux-x86-64-universal")
@@ -61,9 +63,12 @@ if white:
 while not board.is_game_over():
     os.system("clear")
     print("CHESSBLD")
-    print("You are playinng as white.") if white else print("You are playing as black.")
-    if random.randint(1, 2) == 2:
+    print("You are playing as white.") if white else print("You are playing as black.")
+    if moves == 0:
         result = engine.play(board, chess.engine.Limit(time=0.1)).move
+
+    last = board.san(board.peek())
+    if True: pass
     else:
         result = random.choice(list(board.legal_moves))
     print("Engine plays:", board.san(result))
