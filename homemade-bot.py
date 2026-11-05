@@ -50,18 +50,29 @@ pst_rook = [
 -5,  0,  0,  0,  0,  0,  0, -5,
 -5,  0,  0,  0,  0,  0,  0, -5,
 -5,  0,  0,  0,  0,  0,  0, -5,
-0,  0,  0,  5,  5,  0,  0,  0
+0,  0,  0,  5,  5,  5,  0,  0
 ]
 
 pst_queen = [
--20,-10,-10, 10, -5,-10,-10,-20,
+-20,-10,-10, -5, -5,-10,-10,-20,
 -10,  0,  0,  0,  0,  0,  0,-10,
 -10,  0,  5,  5,  5,  5,  0,-10,
 -5,  0,  5,  5,  5,  5,  0, -5,
-0,  0,  5,  5,  5,  5,  0, -5,
+-5,  0,  5,  5,  5,  5,  0, -5,
 -10,  5,  5,  5,  5,  5,  0,-10,
 -10,  0,  5,  0,  0,  0,  0,-10,
 -20,-10,-10, -5, -5,-10,-10,-20
+]
+
+pst_queen_earlygame = [
+-20,-10,-10, -5, -5,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-5,  0,  0,  0,  0,  0,  0, -5,
+-5,  0,  0,  0,  0,  0,  0, -5,
+-10,  5,  5,  5,  0,  0,  0,-10,
+-10,  0,  5,  5,  5,  0,  0,-10,
+-20,-10,-10, 15, 15, -10,-10,-20
 ]
 
 pst_king = [
@@ -72,7 +83,7 @@ pst_king = [
 -20,-30,-30,-40,-40,-30,-30,-20,
 -10,-20,-20,-20,-20,-20,-20,-10,
 10,  5, -10,-10,-10,-10, 5,  10,
-20, 30, 10,  0,  0, 10, 30, 20
+20, 30, 30,  0,  0, 10, 30, 20
 ]
 
 pst_king_endgame = [
@@ -104,16 +115,18 @@ piece_values = {
 def evaluate():
     # Material score
     score = 0
+    totalvalue = 0
+    stage = 1
     for piece in board.piece_map().values():
         value = piece_values.get(piece.piece_type)
+        if piece.piece_type != chess.PAWN:
+            totalvalue = piece_values.get(piece.piece_type)
         score += value if piece.color == chess.WHITE else -value
 
-    endgame = True
-    for sq2 in chess.SQUARES:
-        piece2 = board.piece_at(sq2)
-        if piece2 and piece2.piece_type == chess.QUEEN:
-            endgame = False
-            break
+    if totalvalue < 15:
+        stage = 2
+    elif totalvalue > 45:
+        stage = 0
 
     for sq in chess.SQUARES:
         piece = board.piece_at(sq)
@@ -144,13 +157,19 @@ def evaluate():
                     score -= pst_rook[sq]
 
             elif piece.piece_type == chess.QUEEN:
-                if piece.color == chess.WHITE:
-                    score += pst_queen[sq ^ 56]
+                if stage > 0:
+                    if piece.color == chess.WHITE:
+                        score += pst_queen[sq ^ 56]
+                    else:
+                        score -= pst_queen[sq]
                 else:
-                    score -= pst_queen[sq]
+                    if piece.color == chess.WHITE:
+                        score += pst_queen_earlygame[sq ^ 56]
+                    else:
+                        score -= pst_queen_earlygame[sq]
 
             else: # chess.KING
-                if not endgame:
+                if stage < 2:
                     if piece.color == chess.WHITE:
                         score += pst_king[sq ^ 56]
                     else:
@@ -166,21 +185,12 @@ def evaluate():
         if board.turn == chess.WHITE:
             score -= 25
         else:
-            score += 25                  
-
+            score += 25               
 
     return score
 
-
-
-moves = 0
-blind = False
-
 def move():
-    global moves, blind
-    moves += 1
-    if not blind:
-        print(board)
+    print(board)
 
     while not board.is_game_over():
         move = input("Move (SAN): ")
@@ -189,12 +199,10 @@ def move():
             board.push_san(move)
             break
         except ValueError:
-            if move == "peek":
+            if move == "pop":
+                board.pop()
+                board.pop()
                 print(board)
-                print("Here is the state of the board.")
-            elif move == "blind":
-                blind = not blind
-                print("Blind:", blind)
             else:
                 print("Invalid.")
 
@@ -217,12 +225,13 @@ def move_order_key(move):
 def minmax(alpha, beta, depth, maxxing):
     if board.is_checkmate():
         return -(999999 + depth) if maxxing else (999999 + depth)
-    elif board.is_game_over():
+    elif board.is_game_over() or board.is_repetition(3):
         return 0
     if depth == 0:
         return evaluate()
 
     moves = sorted(board.legal_moves, key=move_order_key)
+
     if maxxing:
         best = -float("inf")
         for move in moves:
@@ -242,12 +251,14 @@ def minmax(alpha, beta, depth, maxxing):
             beta = min(beta, best)
             if alpha >= beta:
                 break
+
+        
         return best
 
 def calculate(depth):
     best_moves, best_score = [], None
     for move in list(board.legal_moves):
-
+        # print(best_score, best_moves)
         if best_score is None:
             alpha, beta = -float("inf"), float("inf")
         elif engine_white:
@@ -257,15 +268,17 @@ def calculate(depth):
 
 
         board.push(move)
-        score = minmax(alpha, beta, depth - 1, not engine_white)
+        score = minmax(alpha, beta, depth - 1, not engine_white)    
         board.pop()
+        print(score, board.san(move))
+
 
         if best_score is None or (score > best_score if engine_white else score < best_score):
             best_score, best_moves = score, [move]
         elif score == best_score:
             best_moves.append(move)
-    print(best_score)
-    return random.choice(best_moves)
+    
+    return random.choice(best_moves), best_score
 
 
         
@@ -297,12 +310,13 @@ while not board.is_game_over():
 
     # Depth calculation (n-ply)
     result = calculate(5)
-    print("Engine plays:", board.san(result))
-    board.push(result)
+    print("Engine plays:", board.san(result[0]), "(" + str(result[1]) + ")")
+    board.push(result[0])
 
     move()
 
 print("done")
 print(board)
+print(board.ply() * 2)
 print(board.outcome().termination)
 print(board.outcome().winner)
