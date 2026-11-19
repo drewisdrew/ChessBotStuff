@@ -13,7 +13,8 @@ print("Loading engine...")
 try:
     if "nt" in os.name:
         nt = True
-        engine = chess.engine.SimpleEngine.popen_uci("C:\\Users\\andre\\Downloads\\stockfish-windows-arm64-universal\\stockfish\\stockfish-windows-arm64-universal.exe")
+        print("engine off")
+        # engine = chess.engine.SimpleEngine.popen_uci("C:\\Users\\andre\\Downloads\\stockfish-windows-arm64-universal\\stockfish\\stockfish-windows-arm64-universal.exe")
     elif "posix" in os.name:
         nt = False
         engine = chess.engine.SimpleEngine.popen_uci("/home/drew/Downloads/stockfish/stockfish-linux-x86-64-universal")
@@ -119,7 +120,7 @@ pst_king_endgame = [
 #endregion psts
 
 alt_board = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-alt_board = "5r1k/ppp3pp/7N/3Q4/8/8/PPP2PPP/6K1 w - - 0 1"
+# alt_board = "5r1k/ppp3pp/7N/3Q4/8/8/PPP2PPP/6K1 w - - 0 1"
 board = chess.Board(alt_board) # if need nerf
 
 # Evaluate how good the position is (to play the good move good one)
@@ -223,6 +224,8 @@ def move():
             if move == "pop":
                 board.pop()
                 board.pop()
+                game_moves.pop()
+                game_moves.pop()
                 print(board)
             else:
                 print("Invalid.")
@@ -347,7 +350,7 @@ def sacrificed(move):
 
 def classify(move):
     white = board.turn == chess.WHITE
-    _, _, moves, scores = calculate(5, None, False, full_window=True)
+    _, _, moves, scores = calculate(3, None, False, full_window=True)
     sign = 1 if white else -1
     cp = {m: max(-3000, min(3000, s * sign)) for m, s in zip(moves, scores)}  
 
@@ -420,15 +423,16 @@ print(game_moves)
 for i, j in enumerate(game_moves):
     print(j)
     print("Move", i)
-    result_move = calculate(5, j, False, False)
-    result = calculate(5, None, True, False)
+    result_move = calculate(3, j, False, False)
+    result = calculate(3, None, True, False)
     print("DrewFish thinks", board.san(j), "is", classify(j), "and is worth", result_move[1])
-    print("DrewFish thinks", board.san(result[0]), "is best and is worth", result_move[1])
-    result_bot = engine.play(board, chess.engine.Limit(time=0.1)).move
-    info = engine.analyse(board, chess.engine.Limit(time=0.1))
-    score = info["score"]
- 
-    print("Stockfish thinks", board.san(result_bot), "is best and is worth", score.white().score(mate_score=999999)) # STOCKFISH
+    print("DrewFish thinks", board.san(result[0]), "is best and is worth", result[1])
+    if not nt:
+        result_bot = engine.play(board, chess.engine.Limit(time=0.1)).move
+        info = engine.analyse(board, chess.engine.Limit(time=0.1))
+        score = info["score"]
+    
+        print("Stockfish thinks", board.san(result_bot), "is best and is worth", score.white().score(mate_score=999999)) # STOCKFISH
 
     board.push(j)
     print(board)

@@ -307,7 +307,6 @@ while not board.is_game_over():
     print("\"No son, we have Stockfish at home.\"")
     print("You are playing as white.") if white else print("You are playing as black.")
 
-
     # Depth calculation (n-ply)
     result = calculate(5)
     print("Engine plays:", board.san(result[0]), "(" + str(result[1]) + ")")
